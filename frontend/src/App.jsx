@@ -4,6 +4,7 @@ import { api } from './lib/api.js';
 import Dashboard from './pages/Dashboard.jsx';
 import Audiences from './pages/Audiences.jsx';
 import Campaigns from './pages/Campaigns.jsx';
+import Customers from './pages/Customers.jsx';
 import NewCampaign from './pages/NewCampaign.jsx';
 import CampaignDetail from './pages/CampaignDetail.jsx';
 import Auth from './pages/Auth.jsx';
@@ -39,6 +40,7 @@ export default function App() {
         <div className="brand">relay<span className="dot">.</span></div>
         <div className="brand-sub">AI-NATIVE MINI CRM</div>
         <NavLink to="/" end>Dashboard</NavLink>
+        <NavLink to="/customers">Customers</NavLink>
         <NavLink to="/audiences">Audiences</NavLink>
         <NavLink to="/campaigns">Campaigns</NavLink>
         
@@ -62,6 +64,7 @@ export default function App() {
       <main className="content">
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/customers" element={<Customers />} />
           <Route path="/audiences" element={<Audiences />} />
           <Route path="/campaigns" element={<Campaigns />} />
           <Route path="/campaigns/new" element={<NewCampaign />} />
