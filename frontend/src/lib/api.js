@@ -1,6 +1,6 @@
 // Tiny fetch wrapper — every API error surfaces as a thrown Error with the
 // server's message, so pages can show it verbatim.
-const API_BASE = import.meta.env.VITE_API_URL || '';
+const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? '' : 'https://relay-ai-native-mini-crm.onrender.com');
 
 export async function api(path, options = {}) {
   const token = localStorage.getItem('crm_token');
