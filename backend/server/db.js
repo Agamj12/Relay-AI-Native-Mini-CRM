@@ -1,6 +1,12 @@
 // db.js — MongoDB persistence layer client
 import { MongoClient, ObjectId } from 'mongodb';
 
+try {
+  process.loadEnvFile();
+} catch (e) {
+  // Ignored in production (Render) where env variables are injected directly
+}
+
 const MONGODB_URI = (process.env.MONGODB_URI || 'mongodb://localhost:27017/relay').trim();
 const client = new MongoClient(MONGODB_URI);
 

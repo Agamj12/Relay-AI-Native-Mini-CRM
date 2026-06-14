@@ -4,8 +4,8 @@
 set -e
 cd "$(dirname "$0")"
 rm -rf data
-node --no-warnings channel/index.js > /tmp/channel.log 2>&1 & CH=$!
-node --no-warnings server/index.js  > /tmp/server.log  2>&1 & SV=$!
+node --no-warnings backend/channel/index.js > /tmp/channel.log 2>&1 & CH=$!
+node --no-warnings backend/server/index.js  > /tmp/server.log  2>&1 & SV=$!
 trap "kill $CH $SV 2>/dev/null" EXIT
 sleep 2
 

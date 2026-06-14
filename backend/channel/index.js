@@ -15,6 +15,12 @@
 // Nothing is persisted here — a channel provider is someone else's system;
 // the CRM must own its own state.
 
+try {
+  process.loadEnvFile();
+} catch (e) {
+  console.warn('loadEnvFile warning:', e.message);
+}
+
 import express from 'express';
 import { randomUUID } from 'node:crypto';
 

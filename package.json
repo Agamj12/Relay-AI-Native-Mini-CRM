@@ -5,10 +5,10 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "server": "node --env-file=.env --no-warnings server/index.js",
-    "channel": "node --env-file=.env --no-warnings channel/index.js",
-    "dev": "concurrently -n crm,channel,web -c green,yellow,cyan \"npm run server\" \"npm run channel\" \"npm --prefix web run dev\"",
-    "build": "npm --prefix web install && npm --prefix web run build",
+    "server": "node --no-warnings backend/server/index.js",
+    "channel": "node --no-warnings backend/channel/index.js",
+    "dev": "concurrently -n crm,channel,web -c green,yellow,cyan \"npm run server\" \"npm run channel\" \"npm --prefix frontend run dev\"",
+    "build": "npm --prefix frontend install && npm --prefix frontend run build",
     "start": "concurrently -n crm,channel \"npm run server\" \"npm run channel\"",
     "e2e": "./e2e.sh"
   },
