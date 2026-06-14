@@ -1,5 +1,7 @@
 // Tiny fetch wrapper — every API error surfaces as a thrown Error with the
 // server's message, so pages can show it verbatim.
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
 export async function api(path, options = {}) {
   const token = localStorage.getItem('crm_token');
   const headers = {
@@ -8,7 +10,7 @@ export async function api(path, options = {}) {
     ...(options.headers || {}),
   };
 
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(`${API_BASE}/api${path}`, {
     ...options,
     headers,
     body: options.body ? JSON.stringify(options.body) : undefined,
