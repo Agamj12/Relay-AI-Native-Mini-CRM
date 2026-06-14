@@ -24,7 +24,7 @@ try {
 import express from 'express';
 import { randomUUID } from 'node:crypto';
 
-const PORT = process.env.PORT || 4100;
+const PORT = process.env.CHANNEL_PORT || 4100;
 const app = express();
 app.use(express.json({ limit: '5mb' }));
 
