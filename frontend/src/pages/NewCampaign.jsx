@@ -25,7 +25,7 @@ const renderPreview = (t) => t.replace(/\{\{(\w+)\}\}/g, (_, k) => SAMPLE[k] || 
   const draft = async () => {
     setBusy(true); setErr(null);
     try {
-      const d = await api('/ai/draft', { method: 'POST', body: { objective, segment_id: Number(segId), channel, brand } });
+      const d = await api('/ai/draft', { method: 'POST', body: { objective, segment_id: segId, channel, brand } });
       setVariants(d.variants);
       setSelected(0);
       setMessage(d.variants[0].text);
@@ -39,7 +39,7 @@ const renderPreview = (t) => t.replace(/\{\{(\w+)\}\}/g, (_, k) => SAMPLE[k] || 
     try {
       const c = await api('/campaigns', {
         method: 'POST',
-        body: { name, objective, segment_id: Number(segId), channel, message_template: message, brand },
+        body: { name, objective, segment_id: segId, channel, message_template: message, brand },
       });
       nav(`/campaigns/${c.id}`);
     } catch (e) { setErr(e.message); setBusy(false); }
