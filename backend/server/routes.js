@@ -400,6 +400,145 @@ api.get('/campaigns', wrap(async (req, res) => {
   res.json(results);
 }));
 
+api.get('/analytics', wrap(async (req, res) => {
+  const allCampaignStats = await getCollection('communications').aggregate([
+    {
+      $group: {
+        _id: '$campaign_id',
+        sent: { $sum: { $cond: [{ $ne: ['$status', 'QUEUED'] }, 1, 0] } },
+        delivered: { $sum: { $cond: [{ $eq: ['$status', 'DELIVERED'] }, 1, 0] } },
+        failed: { $sum: { $cond: [{ $eq: ['$status', 'FAILED'] }, 1, 0] } },
+        opened: { $sum: { $cond: [{ $gt: ['$opened_at', null] }, 1, 0] } },
+        clicked: { $sum: { $cond: [{ $gt: ['$clicked_at', null] }, 1, 0] } },
+        converted: { $sum: { $cond: [{ $gt: ['$converted_at', null] }, 1, 0] } },
+        revenue: { $sum: '$converted_amount' }
+      }
+    }
+  ]).toArray();
+
+  const statsMap = {};
+  for (const s of allCampaignStats) {
+    if (s._id) {
+      statsMap[s._id.toString()] = s;
+    }
+  }
+
+  const campaigns = await getCollection('campaigns').find().sort({ created_at: -1 }).toArray();
+  const campaignListWithStats = [];
+  
+  let totalSent = 0;
+  let totalDelivered = 0;
+  let totalFailed = 0;
+  let totalOpened = 0;
+  let totalClicked = 0;
+  let totalConverted = 0;
+  let totalRevenue = 0;
+  
+  const statusBreakdown = { DRAFT: 0, SENDING: 0, ACTIVE: 0, DONE: 0 };
+  const channelBreakdown = {
+    EMAIL: { campaigns: 0, sent: 0, converted: 0, revenue: 0 },
+    SMS: { campaigns: 0, sent: 0, converted: 0, revenue: 0 },
+    WHATSAPP: { campaigns: 0, sent: 0, converted: 0, revenue: 0 }
+  };
+
+  for (const c of campaigns) {
+    const s = statsMap[c._id.toString()] || {
+      sent: 0,
+      delivered: 0,
+      failed: 0,
+      opened: 0,
+      clicked: 0,
+      converted: 0,
+      revenue: 0
+    };
+    
+    statusBreakdown[c.status] = (statusBreakdown[c.status] || 0) + 1;
+    
+    const channel = c.channel;
+    if (channelBreakdown[channel]) {
+      channelBreakdown[channel].campaigns++;
+      channelBreakdown[channel].sent += s.sent || 0;
+      channelBreakdown[channel].converted += s.converted || 0;
+      channelBreakdown[channel].revenue += s.revenue || 0;
+    }
+
+    totalSent += s.sent || 0;
+    totalDelivered += s.delivered || 0;
+    totalFailed += s.failed || 0;
+    totalOpened += s.opened || 0;
+    totalClicked += s.clicked || 0;
+    totalConverted += s.converted || 0;
+    totalRevenue += s.revenue || 0;
+
+    const seg = await getCollection('segments').findOne({ _id: c.segment_id });
+    campaignListWithStats.push({
+      ...c,
+      id: c._id.toString(),
+      segment_name: seg ? seg.name : 'Unknown Segment',
+      ...s
+    });
+  }
+
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+  sevenDaysAgo.setHours(0, 0, 0, 0);
+
+  const sentStats = await getCollection('communications').aggregate([
+    { $match: { created_at: { $gte: sevenDaysAgo } } },
+    {
+      $group: {
+        _id: { $dateToString: { format: "%Y-%m-%d", date: "$created_at" } },
+        count: { $sum: 1 }
+      }
+    }
+  ]).toArray();
+
+  const convertedStats = await getCollection('communications').aggregate([
+    { $match: { converted_at: { $gte: sevenDaysAgo } } },
+    {
+      $group: {
+        _id: { $dateToString: { format: "%Y-%m-%d", date: "$converted_at" } },
+        count: { $sum: 1 }
+      }
+    }
+  ]).toArray();
+
+  const sentMap = Object.fromEntries(sentStats.map(s => [s._id, s.count]));
+  const convertedMap = Object.fromEntries(convertedStats.map(c => [c._id, c.count]));
+
+  const dailyActivity = [];
+  const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+    const label = daysOfWeek[d.getDay()];
+    dailyActivity.push({
+      date: dateStr,
+      label,
+      sent: sentMap[dateStr] || 0,
+      converted: convertedMap[dateStr] || 0
+    });
+  }
+
+  res.json({
+    summary: {
+      totalCampaigns: campaigns.length,
+      totalSent,
+      totalDelivered,
+      totalFailed,
+      totalOpened,
+      totalClicked,
+      totalConverted,
+      totalRevenue
+    },
+    dailyActivity,
+    channelBreakdown,
+    campaignStatusBreakdown: statusBreakdown,
+    campaigns: campaignListWithStats
+  });
+}));
+
 api.get('/campaigns/:id', wrap(async (req, res) => {
   const c = await getCollection('campaigns').findOne({ _id: new ObjectId(req.params.id) });
   if (!c) return res.status(404).json({ error: 'campaign not found' });

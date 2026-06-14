@@ -8,6 +8,7 @@ import Customers from './pages/Customers.jsx';
 import NewCampaign from './pages/NewCampaign.jsx';
 import CampaignDetail from './pages/CampaignDetail.jsx';
 import Auth from './pages/Auth.jsx';
+import Analytics from './pages/Analytics.jsx';
 
 export default function App() {
   const [user] = useState({ name: 'Admin', email: 'admin@relay.com' });
@@ -43,6 +44,7 @@ export default function App() {
         <NavLink to="/customers">Customers</NavLink>
         <NavLink to="/audiences">Audiences</NavLink>
         <NavLink to="/campaigns">Campaigns</NavLink>
+        <NavLink to="/analytics">Analytics</NavLink>
         
         <div className="rail-user-profile">
           <div className="user-avatar">A</div>
@@ -67,6 +69,7 @@ export default function App() {
           <Route path="/customers" element={<Customers />} />
           <Route path="/audiences" element={<Audiences />} />
           <Route path="/campaigns" element={<Campaigns />} />
+          <Route path="/analytics" element={<Analytics />} />
           <Route path="/campaigns/new" element={<NewCampaign />} />
           <Route path="/campaigns/:id" element={<CampaignDetail />} />
         </Routes>
