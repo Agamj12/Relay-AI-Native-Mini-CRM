@@ -77,11 +77,25 @@ async function callGemini(system, user, jsonMode = false) {
 }
 
 async function callLLM(system, user, maxTokens = 1000, jsonMode = false) {
+  let geminiError;
   if (GEMINI_API_KEY) {
-    return callGemini(system, user, jsonMode);
+    try {
+      return await callGemini(system, user, jsonMode);
+    } catch (e) {
+      console.warn('[relay-crm] Gemini call failed:', e.message);
+      geminiError = e;
+      if (!ANTHROPIC_API_KEY) {
+        throw e;
+      }
+    }
   }
   if (ANTHROPIC_API_KEY) {
-    return callClaude(system, user, maxTokens);
+    try {
+      return await callClaude(system, user, maxTokens);
+    } catch (e) {
+      console.warn('[relay-crm] Claude call failed:', e.message);
+      throw geminiError || e;
+    }
   }
   throw new Error('No AI API key configured');
 }
@@ -127,10 +141,15 @@ function heuristicSegment(prompt) {
 
 export async function nlToSegment(prompt) {
   if (!aiEnabled()) return { rules: validateRules(heuristicSegment(prompt)), source: 'heuristic' };
-  const raw = await callLLM(SEGMENT_SYSTEM, prompt, 600, true);
-  const parsed = JSON.parse(stripFences(raw));
-  if (parsed.error) throw new Error(parsed.error);
-  return { rules: validateRules(parsed), source: GEMINI_API_KEY ? 'gemini' : 'claude' };
+  try {
+    const raw = await callLLM(SEGMENT_SYSTEM, prompt, 600, true);
+    const parsed = JSON.parse(stripFences(raw));
+    if (parsed.error) throw new Error(parsed.error);
+    return { rules: validateRules(parsed), source: GEMINI_API_KEY ? 'gemini' : 'claude' };
+  } catch (error) {
+    console.warn('[relay-crm] LLM segmentation failed, falling back to heuristics:', error.message);
+    return { rules: validateRules(heuristicSegment(prompt)), source: 'heuristic' };
+  }
 }
 
 // ---------------------------------------------------------------- 2. Drafting
@@ -159,15 +178,20 @@ function heuristicDrafts(objective, channel, brand = 'Brew & Bloom') {
 export async function draftMessages({ objective, audienceSummary, channel, brand }) {
   const brandName = brand || 'Brew & Bloom';
   if (!aiEnabled()) return { variants: heuristicDrafts(objective, channel, brandName), source: 'heuristic' };
-  const raw = await callLLM(
-    getDraftSystemPrompt(brandName),
-    `Channel: ${channel}\nAudience: ${audienceSummary}\nCampaign objective: ${objective}`,
-    900,
-    true
-  );
-  const parsed = JSON.parse(stripFences(raw));
-  if (!Array.isArray(parsed.variants) || parsed.variants.length === 0) throw new Error('Bad draft response');
-  return { variants: parsed.variants.slice(0, 3), source: GEMINI_API_KEY ? 'gemini' : 'claude' };
+  try {
+    const raw = await callLLM(
+      getDraftSystemPrompt(brandName),
+      `Channel: ${channel}\nAudience: ${audienceSummary}\nCampaign objective: ${objective}`,
+      900,
+      true
+    );
+    const parsed = JSON.parse(stripFences(raw));
+    if (!Array.isArray(parsed.variants) || parsed.variants.length === 0) throw new Error('Bad draft response');
+    return { variants: parsed.variants.slice(0, 3), source: GEMINI_API_KEY ? 'gemini' : 'claude' };
+  } catch (error) {
+    console.warn('[relay-crm] LLM message drafting failed, falling back to heuristics:', error.message);
+    return { variants: heuristicDrafts(objective, channel, brandName), source: 'heuristic' };
+  }
 }
 
 // ---------------------------------------------------------------- 3. Insights
@@ -189,6 +213,11 @@ function heuristicInsight(s) {
 
 export async function campaignInsight(stats) {
   if (!aiEnabled()) return { text: heuristicInsight(stats), source: 'heuristic' };
-  const text = await callLLM(INSIGHT_SYSTEM, JSON.stringify(stats), 400, false);
-  return { text: text.trim(), source: GEMINI_API_KEY ? 'gemini' : 'claude' };
+  try {
+    const text = await callLLM(INSIGHT_SYSTEM, JSON.stringify(stats), 400, false);
+    return { text: text.trim(), source: GEMINI_API_KEY ? 'gemini' : 'claude' };
+  } catch (error) {
+    console.warn('[relay-crm] LLM campaign insight generation failed, falling back to heuristics:', error.message);
+    return { text: heuristicInsight(stats), source: 'heuristic' };
+  }
 }
